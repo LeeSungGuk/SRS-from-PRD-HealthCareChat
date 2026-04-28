@@ -1,9 +1,10 @@
 # MVP 개발목표 적절성 종합 검토 보고서
 
 문서명: MVP-개발목표-적절성-종합-검토(난이도-가능성-효율성)-보고서  
-검토일: 2026-04-21  
-검토 대상: `SRS_v02._gpt.md`, `plans/SRS_v02_fastapi_mvp_conversion_plan.md`  
-검토 관점: 개발 난이도, 구현 가능성, 개발 속도, 외부 연동 적합성, 기술 스택 리스크, 운영 비용 효율성
+검토일: 2026-04-28  
+검토 대상: `SRS/실버케어_SRS_v0.5_단일구조.md`  
+검토 관점: 개발 난이도, 구현 가능성, 개발 속도, 외부 연동 적합성, 기술 스택 리스크, 운영 비용 효율성  
+기준 기술 스택: Next.js App Router, Server Actions, Route Handlers, Prisma, local SQLite, Supabase PostgreSQL, Tailwind CSS, shadcn/ui, Vercel AI SDK, Google Gemini API, Vercel
 
 > 파일명 처리 주의: 요청 파일명에 포함된 `/` 문자는 macOS/Unix 파일명에 사용할 수 없으므로 `난이도-가능성-효율성` 형태로 치환하였다.
 
@@ -11,103 +12,124 @@
 
 ## 1. Executive Summary
 
-현재 `SRS_v02._gpt.md`는 요구사항 추적성, API 목록, 데이터 모델, 다이어그램, NFR를 갖춘 상위 SRS로는 유용하다. 그러나 MVP 개발 목표 관점에서는 여전히 범위와 NFR가 무겁다.
+`실버케어_SRS_v0.5_단일구조.md`는 MVP의 기술 방향을 Next.js 단일 풀스택 구조로 정렬한 점에서 개발 속도와 초기 운영 비용 측면에 적합하다. B2B API, Partner Console, Web API Playground, PoC Report, 운영 로그, 동의 관리까지 한 프로젝트 안에서 구현할 수 있으므로 완전 분리형 프론트엔드/백엔드 구조보다 MVP 착수 난이도가 낮다.
 
-시스템 및 비용 효율성 관점에서 보면, 추가 조정이 필요하다. 특히 아래 항목은 MVP에서 강하게 축소하거나 재정의해야 한다.
+다만 현재 문서는 ISO 29148 SRS로서 완성도가 높은 대신, 바이브코딩 기반 MVP 실행 기준으로는 일부 요구가 무겁다. 특히 10,000대 동시성, 99.9% SLA, LLM 포함 p95 800ms, 위험 탐지 recall 90% 이상, 완전한 삭제 전파, 운영 등급 RBAC는 MVP 첫 구현 완료 조건으로 두면 개발 속도와 비용 효율성을 떨어뜨린다.
 
-| 조정 필요 항목 | 현재 상태 | MVP 권장 상태 | 우선순위 |
-|---|---|---|---|
-| Phase B 기능 | 센서, 응급 Webhook, 리포트가 SRS 본문에서 상당한 비중을 차지함 | 요구사항 추적성만 유지하고 구현은 Post-MVP로 분리 | High |
-| API Gateway/MSA 표현 | API Gateway, 개별 서비스, 시계열 저장소 표현이 남아 있음 | 단일 FastAPI 애플리케이션 내부 모듈 구조로 축소 | High |
-| p95 800ms | LLM 전체 응답까지 포함하는 것처럼 해석될 위험 | 비LLM 서버 처리, LLM 첫 응답 시작, LLM 전체 완료 시간을 분리 | High |
-| 10,000대 동시 활성 기기 | MVP 수용 기준처럼 보임 | 성장 목표 또는 Post-MVP 부하 검증 목표로 이동 | High |
-| RBAC/암호화/감사 로그 | 운영 등급 요구로 작성됨 | API Key 기반 테넌트 인증, 최소 감사 로그, DB/전송 암호화부터 구현 | Medium |
-| 개발자 포털 | 별도 포털 구현 가능성 포함 | FastAPI `/docs`, `/openapi.json`, 샘플 요청 중심으로 시작 | Medium |
-| LLM 비용 통제 | 비용 산정 기준은 있으나 토큰 예산이 없음 | 요청당 토큰 상한, 모델 티어 라우팅, 월 예산 알림 추가 | High |
+종합 판단은 다음과 같다.
 
-종합 점수는 다음과 같다.
+| 평가 항목 | 현재 단일구조 SRS | 조정 후 MVP 기준 | 판단 |
+|---|---:|---:|---|
+| 개발 속도 | 7/10 | 8.5/10 | 단일구조 선택은 적절하나 Phase B와 production-grade NFR 분리가 필요 |
+| 구현 가능성 | 7/10 | 8/10 | 중급 개발자 + AI 보조 구현 가능. 단, 작업 단위 분해 필요 |
+| 외부 연동 적합성 | 8/10 | 8.5/10 | REST JSON API, API Key, Playground 방향은 적절 |
+| 기술 스택 단순성 | 8/10 | 8.5/10 | Vercel/Supabase/Gemini 조합은 MVP에 적합 |
+| 운영 비용 효율성 | 7.5/10 | 8.5/10 | 작은 PoC는 월 수십 달러 수준 가능. LLM 호출량 통제가 핵심 |
+| 완전 바이브코딩 적합성 | 6/10 | 7.5/10 | SRS 그대로보다 별도 TASKS 문서 기반 실행이 적절 |
 
-| 평가 항목 | 현재 SRS 기준 | FastAPI MVP 조정 후 예상 |
-|---|---:|---:|
-| 개발 속도 적합성 | 5/10 | 8/10 |
-| 외부 연동 적합성 | 7/10 | 8.5/10 |
-| 기술 스택 단순성 | 5.5/10 | 8/10 |
-| 운영 비용 효율성 | 5/10 | 8/10 |
-| 완전 바이브코딩 적합성 | 4/10 | 6.5/10 |
-| AI 생성물 개선형 개발 적합성 | 8/10 | 9/10 |
+결론적으로 추가 조정은 필요하다. 조정 방향은 기능 삭제가 아니라 MVP 완료 조건과 후속 검증 조건을 분리하는 것이다.
 
-결론적으로, 현재 SRS를 그대로 구현 대상으로 삼기보다 `SRS_v03_fastapi_mvp.md`에서 MVP 범위를 다시 잘라야 한다. 핵심 사용자 가치는 `chat/reply`, `analyze/emotion`, `schedule/proactive`, 개발자 문서, API Key 인증, 대화/기억/감정 저장, PII 마스킹, 감사 로그, 기본 지표 수집까지로 충분히 검증 가능하다.
+| 조정 필요 항목 | 현재 상태 | 권장 조정 |
+|---|---|---|
+| Phase B 기능 | SRS 본문과 Appendix에 유지됨 | 구현 대상이 아니라 추적성 보존 항목으로 명확히 표시 |
+| p95 800ms | `/api/v1/chat/reply` 전체 응답 기준으로 읽힐 수 있음 | 비LLM 처리, LLM 첫 토큰, LLM 전체 완료 시간을 분리 |
+| 10,000대 동시성 | MVP 구현 수용 기준처럼 보임 | Post-MVP 부하 목표로 이동하고 MVP는 50~200명 PoC 기준 |
+| AI 평가 지표 | recall 90%, critical recall 95%, 오탐률 10% | 초기 MVP는 평가셋 구조와 리뷰 큐 구현을 완료 조건으로 둠 |
+| 개인정보 삭제 전파 | 모든 캐시/인덱스/백업까지 전파 요구 | MVP는 primary DB와 audit 가능한 deletion job부터 구현 |
+| 운영/모니터링 | 운영 등급 경보와 SLA 기준 포함 | Vercel/Supabase 기본 로그 + DB audit log 중심으로 시작 |
+| 비용 통제 | usage event는 있으나 모델/토큰 예산 구체성이 부족 | Gemini Flash-Lite 기본, 토큰 상한, tenant quota, spend alert 추가 |
 
 ---
 
 ## 2. 검토 전제
 
-### 2.1 사용자가 의도한 MVP 기술 방향
+### 2.1 현재 SRS의 기술 제약
 
-| 영역 | 권장 방향 |
+`SRS/실버케어_SRS_v0.5_단일구조.md`는 다음 결정을 포함한다.
+
+| ID | 내용 |
 |---|---|
-| 프론트엔드 | Vite 기반 React.js |
-| 백엔드 | Python 3.11+ / FastAPI |
-| API 계약 | REST / OpenAPI 3.x |
-| 데이터베이스 | MySQL 8.x, InnoDB, utf8mb4 |
-| ORM/마이그레이션 | SQLAlchemy 또는 SQLModel + Alembic |
-| LLM 오케스트레이션 | FastAPI 내부 모듈 + LangChain 최소 사용 |
-| LLM 호출 | 사내 LLM Gateway 경유, 기본 Provider Google Gemini |
-| 배포 | MVP는 단일 백엔드 애플리케이션, MSA/gRPC는 Post-MVP |
+| C-TEC-001 | 모든 서비스는 Next.js App Router 기반 단일 풀스택 프레임워크로 구현 |
+| C-TEC-002 | 서버 측 로직은 Server Actions 또는 Route Handlers로 구현 |
+| C-TEC-003 | 로컬은 Prisma + SQLite, 배포는 Supabase PostgreSQL 사용 |
+| C-TEC-004 | UI는 Tailwind CSS와 shadcn/ui 사용 |
+| C-TEC-005 | LLM 오케스트레이션은 Vercel AI SDK로 Next.js 내부 구현 |
+| C-TEC-006 | 기본 LLM Provider는 Google Gemini API |
+| C-TEC-007 | 배포는 Vercel Git Integration 기반 자동 배포 |
+| C-TEC-008~013 | 추후 분리를 위해 모듈 경계, 데이터 접근 경계, API 계약, server-only 경계 유지 |
 
-### 2.2 MVP 성공 기준
+이 방향은 MVP 개발 속도와 초기 비용 효율성 측면에서 타당하다. 특히 프론트엔드, API, 내부 운영 콘솔, Playground를 한 코드베이스에 둘 수 있어 바이브코딩으로 작업을 나누기 쉽다.
 
-MVP는 “플랫폼 전체 완성”이 아니라 다음 가설 검증에 집중해야 한다.
+### 2.2 현재 가격 정보 기준
 
-| 검증 가설 | MVP에서 확인할 것 |
-|---|---|
-| B2B 파트너가 쉽게 붙을 수 있는가 | OpenAPI 문서, API Key, 샘플 요청으로 1일 내 연동 가능 여부 |
-| 어르신 대화 가치가 있는가 | 존댓말 응답, 기억 참조, 정서적 반응, 의료 가드레일 |
-| 감정/위험 분석이 쓸모 있는가 | 외로움, 우울 위험, 통증 호소, 위험 키워드 반환 |
-| 선제 발화가 가치 있는가 | 기상, 식사, 복약 컨텍스트에서 개인화 메시지 생성 |
-| 비용 구조가 감당 가능한가 | 사용자당 LLM 호출 비용과 인프라 고정비가 예측 가능한지 |
+아래 비용 검토는 2026-04-28 기준 공식 공개 가격을 참고한 의사결정용 추정이다. 실제 비용은 리전, 환율, 세금, 무료 티어 적용, 사용량, 로그 보존, 데이터 전송량, 모델 버전, 약정 여부에 따라 달라질 수 있다.
+
+| 항목 | 확인한 가격 기준 | 출처 |
+|---|---|---|
+| Vercel Pro | 월 $20 + 추가 사용량, $20 usage credit 포함 | Vercel Pricing, Vercel Pro Plan |
+| Vercel Edge Requests | Pro 기준 월 10M included, 이후 $2 / 1M부터 | Vercel Pricing |
+| Vercel Fast Data Transfer | Pro 기준 월 1TB included, 이후 $0.15 / GB부터 | Vercel Pricing |
+| Vercel Functions | invocations, active CPU, memory 기준 과금 구조 | Vercel Pricing |
+| Supabase Pro | Pro Plan $25 예시, Micro compute와 compute credit 적용 시 단일 프로젝트 총 $25 예시 | Supabase Billing, Supabase Compute |
+| Supabase DB | Pro/Team 기준 8GB disk included, 초과 $0.125 / GB | Supabase Billing |
+| Supabase Egress | Pro/Team 기준 250GB included, 초과 $0.09 / GB | Supabase Billing |
+| Gemini 2.5 Flash-Lite | 입력 $0.10 / 1M tokens, 출력 $0.40 / 1M tokens | Google Gemini API Pricing |
+| Gemini 2.5 Flash | 입력 $0.30 / 1M tokens, 출력 $2.50 / 1M tokens | Google Gemini API Pricing |
 
 ---
 
 ## 3. 개발 속도 관점 검토
 
-### 3.1 현재 SRS의 개발 속도 저해 요인
+### 3.1 현재 방향의 장점
 
-| 저해 요인 | 설명 | 영향 |
-|---|---|---|
-| Phase A/B 범위 혼재 | Phase B 기능이 Should로 분리되어 있지만 문서 전체 구현 압력을 만든다. | AI가 센서, Webhook, 리포트까지 한 번에 만들 가능성이 높다. |
-| 물리 아키텍처 오해 가능성 | API Gateway, AI 엔진, 시계열 저장소가 별도 컴포넌트처럼 보인다. | MVP가 MSA 또는 과도한 인프라로 커질 수 있다. |
-| NFR가 운영 등급에 가까움 | 99.9% SLA, RPO 15분, RTO 30분, 10,000대 동시성은 초기 MVP 기준으로 과하다. | 구현보다 운영 설계와 부하 테스트에 시간이 소요된다. |
-| 개발자 포털 범위가 넓음 | Swagger/OpenAPI와 별도 포털이 동시에 언급된다. | 프론트엔드 구현 시간이 늘어난다. |
-| RBAC가 초기부터 넓음 | 개발자, 관리자, 운영자, 보안 책임자 역할이 모두 등장한다. | 인증/권한 구현 복잡도가 증가한다. |
-
-### 3.2 개발 속도 최적화 권고
-
-| 권고 | 구체 조정 |
+| 항목 | 개발 속도에 유리한 이유 |
 |---|---|
-| 단일 백엔드 우선 | FastAPI 하나의 애플리케이션에서 router/service/repository 모듈로만 분리한다. |
-| API 문서 자동화 | 별도 개발자 포털보다 FastAPI `/docs`, `/redoc`, `/openapi.json`을 먼저 사용한다. |
-| 최소 Vite 포털 | API Key 확인, 샘플 요청 복사, API 호출 테스트 정도만 구현한다. |
-| Phase B 동결 | 센서 수집, 응급 Webhook, 보호자/기관 리포트는 스키마 초안과 추적성만 유지한다. |
-| RBAC 단순화 | MVP는 `tenant_api_key`, `operator_admin` 2수준으로 시작한다. |
-| 테스트 단위 분할 | `chat/reply` → `analyze/emotion` → `schedule/proactive` → 인증/테넌트 → 저장/감사 순서로 구현한다. |
+| Next.js 단일 앱 | Web UI, API Route, Server Action, 인증, 배포를 한 프로젝트에서 처리 가능 |
+| Route Handlers | B2B API를 별도 백엔드 없이 구현 가능 |
+| Server Actions | Partner Console 내부 mutation을 빠르게 구현 가능 |
+| Prisma | schema, migration, type-safe query를 빠르게 구성 가능 |
+| local SQLite | 로컬 개발환경 준비 시간이 짧음 |
+| Supabase PostgreSQL | DB 운영, 백업, 인증 확장 가능성을 managed service로 확보 |
+| shadcn/ui | Partner Console, API Playground, 표/폼/탭/모달 구현 속도 향상 |
+| Vercel 배포 | Git Push 기반 preview/production 배포로 인프라 설정 시간 감소 |
+| Vercel AI SDK | Gemini 호출, streaming, structured generation 패턴을 TypeScript 안에서 처리 가능 |
 
-### 3.3 개발 속도 관점 결론
+개발 속도 관점에서 현재 스택은 MVP에 적절하다. FastAPI/MySQL 분리 구조보다 초기 구현 속도는 빠르고, Cursor/Codex/v0 같은 AI 도구와도 궁합이 좋다.
 
-현재 SRS 그대로는 “AI에게 전체 구현을 맡기는 방식”에 부적합하다. 그러나 FastAPI MVP 계획처럼 범위를 자르면, 중급 개발 배경을 가진 8년차 IT 종사자가 AI 생성 결과물을 검토하며 개발하기에는 적절하다.
+### 3.2 개발 속도를 저해할 수 있는 요소
 
-권장 MVP 개발 순서는 다음이다.
+| 저해 요소 | 문제 | 조정 권고 |
+|---|---|---|
+| 요구사항 60개 + NFR 41개 | AI에게 한 번에 맡기면 범위가 커져 실패 가능성 증가 | `MVP Cut 1` 작업 목록을 별도로 작성 |
+| Phase B 항목 유지 | 센서, Webhook, KPI 리포트가 구현 압력으로 읽힐 수 있음 | `Phase B - Not Implemented in MVP` 라벨 부여 |
+| 운영 등급 NFR | 99.9% SLA, 10,000대 동시성, recall 90%가 과도함 | MVP baseline과 production target 분리 |
+| 동의/삭제 전파 범위 | 캐시, 검색 인덱스, 백업까지 모두 처리하려면 시간이 큼 | primary DB deletion job + audit trail부터 구현 |
+| OpenAPI 계약 | Next.js는 FastAPI처럼 자동 OpenAPI가 기본 제공되지 않음 | Zod schema를 source of truth로 두고 OpenAPI 생성 도구 도입 |
+| RBAC 범위 | B2B-DEV, B2B-PM, 운영자, 권한 있는 B2B 운영 담당자 등 역할이 많음 | MVP는 `developer`, `pm`, `operator` 3개 role로 제한 |
 
-1. FastAPI 프로젝트 골격, Pydantic schema, OpenAPI 문서
-2. MySQL schema, Alembic migration, tenant/api_key/elder_user 기본 테이블
-3. `POST /api/v1/chat/reply`
-4. LLM Gateway adapter, Gemini provider, mock provider
-5. 대화 저장, 기억 조회, PII 마스킹
-6. `POST /api/v1/analyze/emotion`
-7. `POST /api/v1/schedule/proactive`
-8. 감사 로그, latency/error metric
-9. Vite React 최소 개발자 포털
-10. 100개 가상 페르소나 알파 시뮬레이션
+### 3.3 개발 속도 기준 권장 MVP 컷
+
+MVP 1차 구현은 아래 범위로 자르는 것이 적절하다.
+
+| 우선순위 | 구현 항목 | 포함 요구사항 |
+|---|---|---|
+| P0 | Next.js 프로젝트, Tailwind, shadcn/ui, Prisma, SQLite, Supabase 연결 | C-TEC-001~004 |
+| P0 | tenant, user, api_key, audit_log, usage_event 기본 모델 | REQ-FUNC-001, 004~006, 014, 026 |
+| P0 | API Key 발급/폐기 UI | REQ-FUNC-001, 049 |
+| P0 | `/api/v1/chat/reply` Route Handler | REQ-FUNC-007~014 |
+| P0 | Gemini Flash-Lite 연동과 provider adapter | C-TEC-005~006 |
+| P0 | 안전 응답 최소 정책 | REQ-FUNC-012, REQ-NF-014~015 |
+| P0 | Web API Playground | REQ-FUNC-051~055 |
+| P1 | `/api/v1/analyze/emotion` | REQ-FUNC-016~019 |
+| P1 | PoC Report API/Console | REQ-FUNC-022~026, 056 |
+| P1 | Conversation Log / Ops Monitoring 최소 화면 | REQ-FUNC-033~035, 057~058 |
+| P1 | User & Consent Admin View 최소 화면 | REQ-FUNC-036~039, 059 |
+| P2 | `/api/v1/schedule/proactive` | REQ-FUNC-020~021 |
+| Post-MVP | Phase B sensor, webhook, KPI report | REQ-FUNC-040~047 |
+
+### 3.4 개발 속도 결론
+
+현재 단일구조 스택은 개발 속도에 적합하다. 다만 SRS 전체를 그대로 구현 대상으로 삼으면 과하다. 실제 구현은 P0/P1/P2/Post-MVP로 자르고, 첫 MVP는 `API Key + Chat Reply + Playground + 기본 로그 + Gemini 비용 통제`에 집중해야 한다.
 
 ---
 
@@ -115,315 +137,227 @@ MVP는 “플랫폼 전체 완성”이 아니라 다음 가설 검증에 집중
 
 ### 4.1 외부 연동 목표 적합성
 
-현재 제품의 핵심 외부 연동 대상은 B2B 파트너 기기와 파트너 백엔드다. 이 관점에서는 REST/OpenAPI가 가장 적절하다.
+| 외부 연동 대상 | 현재 SRS 적합성 | 판단 |
+|---|---:|---|
+| B2B 파트너 기기 | 높음 | STT/TTS를 파트너가 담당하고 실버케어는 텍스트 JSON API만 제공하는 구조가 적절 |
+| B2B 파트너 서버 | 높음 | API Key, tenant_id, report API, webhook 확장 방향이 적절 |
+| B2B 개발자 | 높음 | Developer Portal, API Docs, Playground, TypeScript snippet은 연동 속도에 유리 |
+| 보호자/기관 시스템 | 중간 | MVP에서는 직접 앱 제공이 아니라 파트너 시스템 연동으로 제한되어 적절 |
+| Gemini API | 높음 | Vercel AI SDK와 TypeScript 기반 구현에 적합 |
+| Supabase | 높음 | MVP DB와 관리형 Postgres로 적절. 다만 Prisma 연결 방식 주의 필요 |
+| Vercel | 높음 | Next.js 배포와 Preview Deployment에 최적화. 다만 장기 vendor lock-in 존재 |
 
-| 외부 연동 대상 | 필요한 것 | 현재 SRS 적합성 | 조정 필요 |
-|---|---|---:|---|
-| 돌봄 로봇/스피커/태블릿 | 텍스트 요청, JSON 응답, 낮은 연동 난이도 | 높음 | API 오류 코드와 샘플 요청 보강 |
-| 파트너 백엔드 | 서버 간 인증, tenant_id, device_id, elder_user_id | 높음 | API Key 또는 Bearer 방식 하나로 확정 |
-| 개발자 | OpenAPI, Swagger, 샘플 코드, 테스트 콘솔 | 중간 | 별도 포털보다 FastAPI 문서 자동 생성을 우선 |
-| 보호자/기관 시스템 | 리포트/알림 Webhook | 낮음-MVP 외 | Post-MVP로 명확히 분리 |
-| LLM Provider | Gemini 기본, Provider 교체 가능성 | 중간 | Gateway adapter와 mock provider를 SRS에 명시 |
+외부 연동 목표와 기술 스택은 전체적으로 잘 맞는다. 특히 B2B 파트너에게 제공할 API는 REST/JSON과 API Key 인증이면 충분하다. gRPC, Kafka, MSA, 별도 API Gateway는 MVP에 불필요하다.
 
 ### 4.2 기술 스택별 적절성과 리스크
 
-| 기술 | 적절성 | 장점 | 리스크 | MVP 권고 |
+| 기술 | 적절성 | 장점 | 리스크 | 대응 |
 |---|---:|---|---|---|
-| Vite React | 높음 | 빠른 개발, 정적 배포 쉬움, shadcn/ui와 결합 용이 | 포털 범위를 키우면 MVP가 느려짐 | 최소 개발자 콘솔만 구현 |
-| FastAPI | 매우 높음 | OpenAPI 자동 생성, Pydantic 검증, Python LLM 생태계와 궁합 좋음 | async/동시성, 배포, 타입 안정성 관리 필요 | 단일 앱 + 명확한 service/repository 구조 |
-| MySQL 8.x | 높음 | 보편적, 운영 사례 많음, B2B 데이터에 적합 | 대량 시계열 센서 저장에는 비효율 가능 | MVP는 대화/기억/감정/감사 로그 중심 |
-| LangChain | 중간-높음 | LLM 체인, provider abstraction, prompt template 활용 가능 | 과도하게 쓰면 디버깅이 어려워짐 | Agent는 금지하고 adapter/prompt/structured output만 사용 |
-| 사내 LLM Gateway | 중간-높음 | Provider 교체, 비용/정책 통제 가능 | Gateway 준비 상태와 latency가 병목 | Gemini direct fallback을 같은 interface 뒤에 둠 |
-| Google Gemini | 높음 | 비용 대비 성능 선택지가 넓음 | rate limit, 모델 변경, 응답 품질 변동 | Flash-Lite 기본, 필요 시 Flash/Pro 승격 |
-| REST/OpenAPI | 매우 높음 | B2B 연동 표준, 문서화 쉬움 | 실시간 음성/저지연 스트리밍에는 한계 | MVP에서는 REST만 사용 |
-| gRPC/MSA | 낮음-MVP | 내부 고성능 통신 가능 | 초기 개발 속도와 운영 복잡도 악화 | Post-MVP로 이동 |
+| Next.js App Router | 높음 | UI/API/서버 로직 통합, AI 도구와 궁합 좋음 | client/server boundary 실수 | `server-only` 규칙과 import 검사 |
+| Server Actions | 중간-높음 | 콘솔 mutation 빠르게 구현 | 외부 API 계약과 섞이면 추후 분리 어려움 | 내부 UI mutation으로만 제한 |
+| Route Handlers | 높음 | B2B API endpoint 구현에 적합 | OpenAPI 자동 생성 약함 | Zod 기반 schema + OpenAPI 생성 |
+| Prisma | 높음 | 타입 안정성, migration, 관계 모델링 | serverless connection 관리 | Supabase pooler 또는 Prisma Accelerate 검토 |
+| local SQLite | 높음 | 로컬 개발 속도 빠름 | PostgreSQL과 enum/json/index 차이 | PoC 전 Supabase migration 테스트 필수 |
+| Supabase PostgreSQL | 높음 | managed DB, backup, dashboard | 과도한 기능 사용 시 lock-in | DB는 PostgreSQL 표준 위주로 사용 |
+| Tailwind + shadcn/ui | 높음 | 빠른 UI 구현, 일관된 컴포넌트 | 화면 수가 늘면 유지보수 부담 | Partner Console 범위 제한 |
+| Vercel AI SDK | 높음 | TypeScript 기반 LLM integration에 적합 | provider API 변경 가능성 | provider adapter로 캡슐화 |
+| Google Gemini API | 높음 | Flash-Lite 비용 효율이 좋음 | rate limit, 모델 품질 변동, API key 비용 사고 | quota, spend alert, key rotation |
+| Vercel | 높음 | Next.js 배포 최적화 | Pro/Enterprise 기능 의존 시 비용 증가 | MVP는 Pro 이하 usage cap 유지 |
 
 ### 4.3 오픈소스 및 외부 의존성 리스크
 
-| 영역 | 오픈소스 여부 | 리스크 | 대응 |
+| 영역 | 오픈소스/관리형 성격 | 리스크 | MVP 대응 |
 |---|---|---|---|
-| FastAPI/Pydantic | 오픈소스 | 버전 변경에 따른 schema/validation 차이 | 버전 pinning, contract test |
-| SQLAlchemy/Alembic | 오픈소스 | migration 충돌, ORM 오용 | migration 리뷰, seed/test DB |
-| LangChain | 오픈소스 | API 변경 빈도, 추상화 과다 | 얇은 wrapper로 격리 |
-| MySQL | 오픈소스/상용 관리형 혼합 | charset, index, migration, backup 운영 | utf8mb4, composite index, managed DB 우선 |
-| Gemini API | 외부 상용 API | 비용, rate limit, 모델 응답 변화 | usage cap, fallback provider, eval set |
-| LLM Gateway | 내부/사내 의존성 | 준비 지연 시 MVP 차단 | mock provider와 direct Gemini provider 병행 |
+| Next.js | 오픈소스 + Vercel 최적화 | Vercel에 최적화된 구조가 다른 플랫폼 이식성을 낮출 수 있음 | Route Handler와 domain service 경계 유지 |
+| shadcn/ui | 오픈소스 컴포넌트 복사 방식 | 컴포넌트 수정 책임이 프로젝트에 있음 | 디자인 시스템을 과도하게 커스터마이징하지 않음 |
+| Prisma | ORM/도구 의존 | serverless 연결, migration drift | pooled connection과 migration check 필수 |
+| Supabase | 오픈소스 기반 managed service | Auth/Storage/Edge Functions까지 쓰면 lock-in 증가 | MVP는 PostgreSQL 중심으로 사용 |
+| Vercel AI SDK | 오픈소스 SDK + provider 연동 | SDK 추상화 변경 가능성 | provider adapter를 얇게 유지 |
+| Gemini API | 외부 상용 API | 비용 폭주, 모델 변경, 장애 | per-tenant quota, global monthly cap, fallback response |
+
+### 4.4 외부 연동 및 기술 스택 결론
+
+현재 기술 스택은 MVP에 적합하다. 추가로 조정할 것은 새로운 기술을 더 넣는 것이 아니라, 오히려 기술을 덜 쓰는 것이다.
+
+MVP에서는 다음을 피해야 한다.
+
+| 피해야 할 것 | 이유 |
+|---|---|
+| 별도 API Gateway | Vercel Route Handlers로 충분 |
+| 별도 Python LLM 서버 | C-TEC-005와 충돌하고 운영 비용 증가 |
+| Supabase Edge Functions | Next.js Route Handlers와 중복 |
+| Vercel Workflow/Queues | 초기에는 DB job table로 충분 |
+| Realtime 기능 | PoC 리포트/로그 조회에는 polling 또는 manual refresh로 충분 |
+| 고급 Observability 유료 add-on | 초기는 DB audit log와 Vercel 기본 로그로 충분 |
 
 ---
 
-## 5. 운영 비용 관점 검토
+## 5. 운영 소요 비용 검토
 
-### 5.1 가격 정보 기준
+### 5.1 비용 구조 요약
 
-아래 비용은 2026-04-21 기준 공개 가격을 참고한 MVP 의사결정용 추정이다. 실제 청구액은 리전, 세금, 환율, 데이터 전송량, 로그 보존량, 할인, 무료 티어 적용 여부에 따라 달라진다.
+MVP 비용은 크게 3개 축으로 나뉜다.
 
-참고 가격:
-
-| 항목 | 공개 가격 요약 | 출처 |
+| 비용 축 | 주요 비용 발생 요인 | MVP 영향 |
 |---|---|---|
-| Gemini 3.1 Flash-Lite Preview | Standard 기준 입력 $0.25 / 1M tokens, 출력 $1.50 / 1M tokens | [Google Gemini API Pricing](https://ai.google.dev/gemini-api/docs/pricing) |
-| Gemini 3 Flash Preview | Standard 기준 입력 $0.50 / 1M tokens, 출력 $3.00 / 1M tokens | [Google Gemini API Pricing](https://ai.google.dev/gemini-api/docs/pricing) |
-| AWS Lightsail Linux | $5, $7, $12, $24/month 등 번들 제공 | [AWS Lightsail Pricing](https://aws.amazon.com/lightsail/pricing/) |
-| AWS Lightsail Managed DB | 예시 기준 Database $15/month, Load Balancer $18/month | [AWS Lightsail Pricing](https://aws.amazon.com/lightsail/pricing/) |
-| Amazon RDS for MySQL | 신규 고객 Free Tier는 750 hours Single-AZ DB, 20GB gp2, 20GB backup 포함 | [Amazon RDS for MySQL Pricing](https://aws.amazon.com/rds/mysql/pricing/) |
-| Vercel Pro | $20/month + additional usage, $20 included usage credit | [Vercel Pricing](https://vercel.com/pricing) |
+| Vercel | Pro seat, function invocation, active CPU, data transfer, observability | 작은 PoC에서는 낮음 |
+| Supabase | Pro plan, DB compute, DB size, egress, backup/add-on | 작은 PoC에서는 예측 가능 |
+| Gemini | 입력/출력 tokens, 모델 티어, grounded search, retry | 사용량이 늘수록 가장 민감 |
 
-### 5.2 MVP 트래픽 가정
+첫 PoC에서는 인프라보다 LLM 비용 통제와 API key 보안이 더 중요하다.
+
+### 5.2 PoC 트래픽 가정
 
 | 가정 ID | 값 | 설명 |
 |---|---:|---|
-| A-COST-001 | 50명 | 첫 PoC 어르신 수 |
+| A-COST-001 | 50명 | 첫 B2B 파트너 PoC 어르신 수 |
 | A-COST-002 | 5회/일 | 어르신 1명당 일평균 대화 호출 |
-| A-COST-003 | 7,500회/월 | `chat/reply` 호출 수: 50명 x 5회 x 30일 |
-| A-COST-004 | 16,500회/월 | 감정 분석, 선제 발화, 재시도 포함 보수적 LLM 호출 수 |
-| A-COST-005 | 입력 900 tokens/call | 최근 기억, system prompt, 사용자 발화 포함 평균 |
-| A-COST-006 | 출력 220 tokens/call | 응답 텍스트 및 JSON metadata 포함 평균 |
-| A-COST-007 | 데이터 저장 10GB 미만 | 대화/감정/감사 로그 중심 MVP |
-| A-COST-008 | 월 전송량 100GB 미만 | 텍스트 JSON API 기준 |
+| A-COST-003 | 7,500회/월 | `chat/reply` 기본 호출량 |
+| A-COST-004 | 10,000~20,000회/월 | 분석, Playground, 재시도 포함 보수적 LLM 호출량 |
+| A-COST-005 | 입력 1,000 tokens/call | system prompt, 최근 요약, 사용자 발화 포함 |
+| A-COST-006 | 출력 250 tokens/call | 응답 텍스트와 JSON metadata 포함 |
+| A-COST-007 | DB 8GB 이하 | 첫 PoC에서 텍스트 로그 중심 |
+| A-COST-008 | egress 250GB 이하 | 텍스트 JSON API 기준 |
 
-### 5.3 LLM 비용 산정
+### 5.3 LLM 비용 추정
 
 계산식:
 
 ```text
-월 LLM 비용 = (월 입력 토큰 / 1,000,000 x 입력 단가) + (월 출력 토큰 / 1,000,000 x 출력 단가)
+월 LLM 비용 = 입력 토큰 / 1,000,000 x 입력 단가 + 출력 토큰 / 1,000,000 x 출력 단가
 ```
 
-보수적 PoC 기준:
+PoC 50명 기준 비용:
 
-```text
-월 입력 토큰 = 16,500 calls x 900 tokens = 14.85M tokens
-월 출력 토큰 = 16,500 calls x 220 tokens = 3.63M tokens
-```
-
-| 모델 | 입력 단가 | 출력 단가 | 월 입력 비용 | 월 출력 비용 | 월 합계 |
-|---|---:|---:|---:|---:|---:|
-| Gemini 3.1 Flash-Lite Preview | $0.25 / 1M | $1.50 / 1M | 약 $3.71 | 약 $5.45 | 약 $9.16 |
-| Gemini 3 Flash Preview | $0.50 / 1M | $3.00 / 1M | 약 $7.43 | 약 $10.89 | 약 $18.32 |
+| 월 LLM 호출 | 모델 | 입력 토큰 | 출력 토큰 | 예상 월 비용 |
+|---:|---|---:|---:|---:|
+| 10,000 | Gemini 2.5 Flash-Lite | 10M | 2.5M | 약 $2.00 |
+| 20,000 | Gemini 2.5 Flash-Lite | 20M | 5M | 약 $4.00 |
+| 10,000 | Gemini 2.5 Flash | 10M | 2.5M | 약 $9.25 |
+| 20,000 | Gemini 2.5 Flash | 20M | 5M | 약 $18.50 |
 
 성장 시나리오:
 
-| 시나리오 | 월 LLM 호출 | Gemini 3.1 Flash-Lite 예상 | Gemini 3 Flash 예상 | 판단 |
+| 시나리오 | 월 LLM 호출 | Flash-Lite 예상 | Flash 예상 | 판단 |
 |---|---:|---:|---:|---|
-| 내부 알파 | 5,000 | 약 $2.78 | 약 $5.55 | 비용 부담 낮음 |
-| 첫 PoC 50명 | 16,500 | 약 $9.16 | 약 $18.32 | 비용 부담 낮음 |
-| 3개 파트너/1,000명 | 195,000 | 약 $108 | 약 $216 | LLM 비용 관리 필요 |
-| 10,000명 규모 | 1,950,000 | 약 $1,082 | 약 $2,165 | MVP 범위를 벗어난 운영 비용 영역 |
+| 내부 알파 | 5,000 | 약 $1 | 약 $4.63 | 비용 부담 낮음 |
+| 첫 PoC 50명 | 20,000 | 약 $4 | 약 $18.50 | 비용 부담 낮음 |
+| 1,000명 | 195,000 | 약 $39 | 약 $180 | 비용 통제 필요 |
+| 10,000명 | 1,950,000 | 약 $390 | 약 $1,804 | Post-MVP 비용 최적화 필요 |
 
-비용 관점에서 핵심은 인프라보다 LLM 사용량이다. MVP 단계에서는 인프라 고정비보다 토큰 예산, 호출 횟수, 모델 티어 선택이 더 중요해진다.
+비용 효율성 관점에서는 Gemini 2.5 Flash-Lite를 기본값으로 두고, 위험 판단이나 낮은 신뢰도 케이스만 Flash로 승격하는 모델 라우팅이 적절하다.
 
-### 5.4 인프라 비용 산정
+### 5.4 Vercel + Supabase 비용 추정
 
-#### Option A. 초저비용 내부 알파
+| 시나리오 | Vercel | Supabase | Gemini | 월 합계 추정 | 판단 |
+|---|---:|---:|---:|---:|---|
+| 로컬 개발 | $0 | $0~$25 | $0~$5 | $0~$30 | 로컬 SQLite와 Gemini free/low usage로 충분 |
+| 내부 알파 | $0~$20 | $0~$25 | $1~$5 | $1~$50 | 비용 매우 낮음 |
+| 첫 PoC 50명 | $20 | $25 | $4~$19 | 약 $49~$64 | 적절 |
+| 3개 PoC / 1,000명 | $20~$50 | $25~$50 | $39~$180 | 약 $84~$280 | 여전히 관리 가능 |
+| 10,000명 규모 | $50+ | $100+ | $390~$1,804 | $540~$2,000+ | MVP 범위 초과, 최적화 필요 |
 
-| 구성 | 월 비용 추정 | 설명 |
-|---|---:|---|
-| Vite 정적 프론트 | $0-$20 | Vercel Hobby 또는 Pro 기준 |
-| FastAPI + MySQL 단일 VM | $7-$12 | Lightsail 1GB 또는 2GB 인스턴스 |
-| 백업/스냅샷/도메인/로그 | $5-$10 | 최소 수준 |
-| LLM | $3-$20 | 내부 알파 또는 작은 PoC 기준 |
-| 합계 | 약 $15-$62/month | 민감 데이터 PoC 전 내부 검증용 |
+첫 PoC 기준으로는 Vercel Pro + Supabase Pro + Gemini Flash-Lite 조합이 월 $50 안팎에서 시작 가능하다. 이 정도면 B2B PoC 검증 비용으로 적절하다.
 
-장점은 가장 빠르고 싸다는 점이다. 단점은 DB와 애플리케이션이 같은 VM에 있어 장애 격리, 백업, 보안, 운영 신뢰성이 낮다. 실제 B2B PoC에는 권장하지 않는다.
+### 5.5 비용 폭주 리스크
 
-#### Option B. 권장 MVP PoC
-
-| 구성 | 월 비용 추정 | 설명 |
-|---|---:|---|
-| Vite React 개발자 포털 | $0-$20 | 팀 협업/상용 PoC면 Vercel Pro 고려 |
-| FastAPI backend | $10-$24 | Lightsail container 또는 Linux instance |
-| Managed MySQL | 약 $15+ | Lightsail managed DB 또는 RDS 소형 인스턴스 |
-| 백업/스냅샷/로그 | $5-$15 | 최소 운영 기록 |
-| LLM | $9-$20 | 50명 PoC 기준 |
-| 합계 | 약 $39-$94/month | 첫 PoC에 가장 현실적 |
-
-이 구성이 현재 목표에 가장 맞다. 개발 속도와 비용이 균형적이고, MySQL을 관리형으로 분리해 데이터 손실 리스크를 줄일 수 있다.
-
-#### Option C. 운영형 클라우드 구성
-
-| 구성 | 월 비용 추정 | 설명 |
-|---|---:|---|
-| 프론트 배포 | $20+ | Vercel Pro 또는 CDN |
-| 컨테이너 실행환경 | $40-$100+ | ECS/Fargate, Cloud Run, App Runner 등 |
-| Managed MySQL | $30-$100+ | RDS/Aurora급 구성 |
-| Load Balancer/WAF/모니터링 | $30-$100+ | 운영 보안과 관측성 강화 |
-| LLM | $100-$1,000+ | 사용자 규모에 따라 선형 증가 |
-| 합계 | 약 $220-$1,300+/month | PoC 성공 후 확장 단계 |
-
-초기 MVP에는 과하다. PoC 파트너가 실제 트래픽과 보안 요구를 제시한 뒤 전환하는 것이 낫다.
-
-### 5.5 비용 폭증 지점
-
-| 비용 폭증 요인 | 이유 | 대응 |
-|---|---|---|
-| LLM 출력 토큰 증가 | 출력 단가가 입력보다 높다. | 응답 길이 상한, JSON schema 압축, 요약 저장 |
-| 매 요청 긴 기억 주입 | context가 길어질수록 입력 토큰 증가 | 최근 N개 기억만 검색, memory summary 사용 |
-| 모든 대화에 별도 감정 분석 호출 | LLM 호출 수가 2배 가까이 증가 | `chat/reply`에서 감정 metadata를 함께 반환하고 별도 분석은 샘플링 |
-| Search grounding 사용 | Gemini 검색 grounding은 무료 한도 이후 별도 과금 가능 | MVP에서는 검색 grounding 사용 금지 |
-| 음성/TTS를 서버에서 처리 | 오디오 모델 비용과 지연 증가 | 기존 ADR처럼 STT/TTS는 파트너 기기에 둠 |
-| 10,000대 동시성 조기 목표화 | 인프라, 부하 테스트, 운영 자동화 비용 증가 | Post-MVP 부하 검증으로 이동 |
-| 고급 리포트/센서 저장 | 데이터량과 집계 비용 증가 | Phase B로 분리 |
-
----
-
-## 6. 현재 SRS에서 추가 조정해야 할 항목
-
-### 6.1 High Priority 조정
-
-| 항목 | 현재 표현 | 권장 조정 |
-|---|---|---|
-| Phase A MVP 정의 | Phase A가 MVP라고 되어 있으나 Phase B도 본문에 넓게 포함됨 | MVP In-Scope를 F1-F3 + 문서/인증/저장/감사/지표로 고정 |
-| p95 800ms | `chat/reply` p95 800ms | 비LLM API p95 800ms, LLM 첫 토큰 p95 800ms, 전체 완료 p95 3초로 분리 |
-| 10,000대 동시 활성 기기 | Must NFR처럼 존재 | Post-MVP scalability target으로 이동 |
-| API Gateway | 물리 Gateway처럼 표현 | FastAPI middleware/router 계층으로 수정 |
-| 시계열 데이터 저장소 | Phase B 센서 저장소로 등장 | MVP에서는 MySQL JSON/일반 테이블만, 대량 시계열 DB는 Post-MVP |
-| LLM 비용 NFR | 단위 처리 비용 산출만 있음 | 요청당 token cap, 월 token budget, provider별 cost log 추가 |
-
-### 6.2 Medium Priority 조정
-
-| 항목 | 현재 표현 | 권장 조정 |
-|---|---|---|
-| 개발자 포털 | 포털 또는 Swagger/OpenAPI | `/docs`, `/openapi.json`, 샘플 코드 우선. Vite 포털은 얇게 |
-| RBAC | 여러 역할 기반 접근 제어 | MVP는 API Key + tenant scope + operator admin으로 축소 |
-| AES-256 저장 암호화 | 전체 민감 데이터 암호화 | MVP는 managed DB encryption + PII masking 우선, 필드 암호화는 후순위 |
-| RPO/RTO | RPO 15분, RTO 30분 | PoC 운영 목표로 낮추고, MVP 수용 기준에서는 백업/복원 절차 검증으로 표현 |
-| 리포트 | 보호자/기관 리포트 API | Phase A에서는 감정 결과 저장까지만, 리포트 API는 Phase B |
-
-### 6.3 Low Priority 조정
-
-| 항목 | 권장 |
-|---|---|
-| 샘플 코드 | `curl`, Python `requests`, JavaScript `fetch` 3개만 우선 |
-| 다이어그램 | FastAPI 단일 앱 구조로 단순화 |
-| 클래스 다이어그램 | Router/Schema/Service/Repository/Gateway Adapter 중심으로 재작성 |
-| 검증 계획 | 100개 페르소나 테스트는 유지하되 비용 예산과 호출량을 함께 명시 |
-
----
-
-## 7. 권장 MVP 아키텍처
-
-```mermaid
-flowchart LR
-    Device["B2B 파트너 기기<br/>STT/TTS 자체 처리"]
-    Portal["Vite React Dev Portal<br/>문서·샘플·테스트 호출"]
-    FastAPI["FastAPI Application<br/>Router + Middleware"]
-    Auth["API Key Auth<br/>Tenant Scope"]
-    Services["Service Layer<br/>Chat·Emotion·Proactive"]
-    Repo["Repository Layer"]
-    MySQL["MySQL 8.x<br/>InnoDB utf8mb4"]
-    LLMAdapter["LLM Gateway Adapter<br/>LangChain 최소 사용"]
-    Gateway["사내 LLM Gateway"]
-    Gemini["Google Gemini Provider"]
-    Logs["Audit & Metrics<br/>DB + Structured Log"]
-
-    Device --> FastAPI
-    Portal --> FastAPI
-    FastAPI --> Auth
-    Auth --> Services
-    Services --> Repo
-    Repo --> MySQL
-    Services --> LLMAdapter
-    LLMAdapter --> Gateway
-    Gateway --> Gemini
-    FastAPI --> Logs
-    Logs --> MySQL
-```
-
-핵심 원칙은 “단일 배포 단위, 내부 모듈화, 외부 REST API, 비용 추적 가능한 LLM 호출”이다.
-
----
-
-## 8. MVP 기능 커버리지 재판단
-
-### 8.1 유지해야 하는 MVP 기능
-
-| 기능 | 유지 이유 |
-|---|---|
-| `POST /api/v1/chat/reply` | 제품의 핵심 가치 자체 |
-| `POST /api/v1/analyze/emotion` | 보호자/기관 확장의 기반 데이터 |
-| `POST /api/v1/schedule/proactive` | 단순 챗봇과 차별화되는 돌봄 경험 |
-| API Key 인증 | B2B 연동의 최소 보안 조건 |
-| tenant_id 격리 | SaaS 데이터 안전성의 핵심 |
-| PII 마스킹 | 시니어 대화 데이터 처리의 필수 안전장치 |
-| 대화/기억/감정 저장 | 개인화와 리포트 확장의 기반 |
-| 감사 로그 | PoC 신뢰와 장애 분석의 기반 |
-| OpenAPI 문서 | B2B 개발자 경험의 핵심 |
-
-### 8.2 Post-MVP로 내려야 하는 기능
-
-| 기능 | 이유 |
-|---|---|
-| 대량 센서 수집 | 하드웨어/파트너별 payload 차이가 크고 데이터량이 많다. |
-| 응급 Webhook 보장 전송 | 재시도, idempotency, 장애 큐, 수신자 관리가 필요하다. |
-| 보호자/기관 고급 리포트 | 집계 기준, 개인정보 권한, UI 요구가 추가된다. |
-| 10,000대 동시성 | PoC 전 검증하기에는 시간과 비용이 크다. |
-| gRPC/MSA | MVP 개발 속도를 늦추고 운영 복잡도를 만든다. |
-| 고급 RBAC/SSO | B2B 계약 이후 필요성이 명확해진다. |
-
-### 8.3 가치 훼손 여부
-
-위와 같이 조정해도 MVP 핵심 가치는 훼손되지 않는다.
-
-| 가치 | 훼손 여부 | 근거 |
-|---|---|---|
-| B2B 파트너가 빠르게 연동 | 훼손 없음 | REST/OpenAPI, API Key, 샘플 코드가 유지됨 |
-| 어르신이 개인화된 대화 경험을 얻음 | 훼손 없음 | 대화, 기억, 선제 발화가 유지됨 |
-| 감정/위험 분석 기반 데이터 축적 | 훼손 없음 | 감정 분석 저장은 유지됨 |
-| 보호자/기관 확장 가능성 | 일부 지연 | 고급 리포트와 응급 알림은 Phase B로 이동 |
-| 비용 예측 가능성 | 개선 | 모델 티어와 토큰 예산을 명시하면 통제 가능 |
-
----
-
-## 9. 최종 권고안
-
-### 9.1 SRS 조정 방향
-
-`SRS_v03_fastapi_mvp.md`에는 다음 내용을 반드시 반영해야 한다.
-
-| 구분 | 반영 내용 |
-|---|---|
-| Scope | MVP In-Scope와 Post-MVP를 명확히 분리 |
-| Constraints | Vite React, FastAPI, MySQL, LangChain, LLM Gateway, Gemini, REST/OpenAPI 명시 |
-| Architecture | API Gateway/MSA 표현 제거, FastAPI 내부 모듈 구조로 변경 |
-| API | `/api/v1/chat/reply`, `/api/v1/analyze/emotion`, `/api/v1/schedule/proactive`, `/docs`, `/openapi.json` 중심 |
-| Data Model | MySQL 테이블 기준으로 tenant, api_key, elder_user, conversation_turn, memory_fact, emotion_analysis, proactive_prompt_log, audit_log, llm_call_log 우선 |
-| NFR | p95 분리, token budget, LLM timeout, monthly cost metric, API error rate 추가 |
-| Traceability | C-TEC 제약과 cost-control 요구사항을 Test Case에 연결 |
-
-### 9.2 비용 효율성 요구사항 후보
-
-향후 SRS에 다음 NFR를 추가하는 것이 좋다.
-
-| 후보 ID | 요구사항 |
-|---|---|
-| REQ-NF-COST-001 | 시스템은 LLM 호출마다 provider, model, input token, output token, estimated cost, latency, request_id를 기록해야 한다. |
-| REQ-NF-COST-002 | 시스템은 tenant별 월 LLM 비용과 성공 API 요청당 평균 LLM 비용을 산출할 수 있어야 한다. |
-| REQ-NF-COST-003 | `chat/reply` 요청의 LLM 입력 토큰은 MVP 기본 설정에서 1,500 tokens 이하로 제한해야 한다. |
-| REQ-NF-COST-004 | Gemini Search Grounding, audio input/output, image generation은 MVP API에서 기본 비활성화해야 한다. |
-| REQ-NF-COST-005 | 기본 대화 모델은 비용 효율 모델로 설정하고, 고위험 또는 품질 검증 케이스에만 상위 모델을 사용할 수 있어야 한다. |
-| REQ-NF-COST-006 | 월 LLM 예상 비용이 설정 예산의 80%를 초과하면 운영자에게 알림을 발생시켜야 한다. |
-
-### 9.3 개발 목표 적절성 최종 판단
-
-| 질문 | 판단 |
-|---|---|
-| 현재 SRS가 MVP 개발에 그대로 적절한가 | 아니다. 범위와 NFR를 줄여야 한다. |
-| FastAPI/MySQL/Gemini 기반으로 충분히 구현 가능한가 | 가능하다. 오히려 MVP에는 적절하다. |
-| 완전 바이브코딩으로 가능한가 | 제한적으로 가능하지만, 보안/DB/LLM 비용/테넌트 격리는 사람 검토가 필요하다. |
-| AI 생성 결과물을 엔지니어링 지식으로 개선하는 방식에는 적절한가 | 매우 적절하다. 요구사항과 추적성이 충분하다. |
-| 비용 효율성 관점에서 추가 조정이 필요한가 | 필요하다. token budget, 모델 티어, Phase B 분리, 인프라 단순화가 필요하다. |
-
-최종 결론은 다음이다.
-
-> 현재 SRS는 “제품 전체 요구사항 기준선”으로 유지하고, 실제 MVP 개발용 SRS는 FastAPI 단일 백엔드, MySQL, OpenAPI 자동 문서, Gemini Flash-Lite 기본 모델, 최소 Vite 개발자 포털, token/cost guardrail 중심으로 재작성해야 한다. 이렇게 조정하면 개발 속도, 외부 연동성, 비용 효율성, 구현 가능성의 균형이 가장 좋다.
-
----
-
-## 10. 참고 자료
-
-| Reference ID | 자료 | URL | 사용 목적 |
+| Risk ID | 리스크 | 영향 | 대응 |
 |---|---|---|---|
-| REF-COST-001 | Google Gemini Developer API Pricing | https://ai.google.dev/gemini-api/docs/pricing | Gemini 모델별 token 가격 확인 |
-| REF-COST-002 | AWS Lightsail Pricing | https://aws.amazon.com/lightsail/pricing/ | 저비용 VM, container, managed DB 비용 범위 확인 |
-| REF-COST-003 | Amazon RDS for MySQL Pricing | https://aws.amazon.com/rds/mysql/pricing/ | 관리형 MySQL 및 Free Tier 조건 확인 |
-| REF-COST-004 | Vercel Pricing | https://vercel.com/pricing | Vite React 프론트 배포 비용 확인 |
+| R-COST-001 | Gemini API Key 유출 | 단기간 큰 비용 발생 가능 | API key server-only 보관, key rotation, GCP budget alert, quota 설정 |
+| R-COST-002 | Playground 오남용 | sandbox 호출이 LLM 비용으로 누적 | sandbox quota, sample response mode, per-user daily limit |
+| R-COST-003 | 긴 prompt/context | 입력 토큰 증가 | memory summary만 사용, raw history window 제한 |
+| R-COST-004 | 긴 응답 | 출력 토큰 증가 | `maxOutputTokens` 제한, 응답 길이 정책 |
+| R-COST-005 | retry storm | timeout 재시도로 중복 비용 발생 | exponential backoff, idempotency key, retry cap |
+| R-COST-006 | Vercel function active CPU 증가 | LLM 대기와 heavy processing으로 비용 증가 | streaming, timeout, background 최소화 |
+| R-COST-007 | Supabase DB/log 증가 | audit/event 로그가 누적 | retention job, summary table, archive policy |
+
+### 5.6 운영 비용 결론
+
+운영 비용 관점에서 현재 단일구조 스택은 적절하다. 단, 비용 효율성은 “Vercel/Supabase가 싸다”보다 “LLM 호출을 얼마나 잘 제한하느냐”에 달려 있다.
+
+MVP 비용 정책은 다음을 SRS 또는 구현 TASKS에 추가하는 것이 적절하다.
+
+| 정책 | 권장값 |
+|---|---|
+| 기본 모델 | `gemini-2.5-flash-lite` |
+| 승격 모델 | `gemini-2.5-flash`, 위험/불확실 케이스만 사용 |
+| 입력 토큰 상한 | 1,200 tokens/call 이하 |
+| 출력 토큰 상한 | 250~350 tokens/call |
+| tenant별 일 호출 제한 | PoC 계약 단위로 설정 |
+| Playground 제한 | sandbox user별 일 N회, production 호출 별도 권한 |
+| 월 예산 알림 | Gemini, Vercel, Supabase 모두 50%, 75%, 90% 알림 |
+| raw log 보존 | 30일 이하 |
+| summary/report 보존 | PRD 기준 최대 180일~1년 |
+
+---
+
+## 6. 더 조정할 항목
+
+### 6.1 SRS에서 조정 권장
+
+| 항목 | 현재 표현 | 조정 권고 |
+|---|---|---|
+| `REQ-NF-001` | `/api/v1/chat/reply` p95 800ms, p99 1.5s | LLM 첫 응답 시작 p95와 전체 완료 p95를 분리 |
+| `REQ-NF-002` | 99.9% SLA | MVP PoC baseline과 Production target 분리 |
+| `REQ-NF-004` | 10,000대 concurrent simulated | Post-MVP scalability target으로 이동 |
+| `REQ-NF-011~013` | recall/오탐률 정량 목표 | MVP에서는 평가셋/리뷰 큐/측정 체계 구축을 완료 조건으로 둠 |
+| `REQ-FUNC-040~047` | Phase B 기능 요구 | 문서 추적성은 유지하되 `Not in MVP implementation cut` 명시 |
+| `REQ-FUNC-038` | 삭제 전파 범위가 광범위 | MVP는 primary DB 삭제 job + audit status부터 구현 |
+| API Docs | Swagger 표현 | Next.js에서는 OpenAPI-compatible docs 또는 generated OpenAPI로 구체화 |
+| 운영 모니터링 | 운영자 알림 5분 | MVP는 dashboard/log query 우선, alert는 P1 또는 P2 |
+
+### 6.2 구현 TASKS에서 조정 권장
+
+| 작업 | 구현 방식 |
+|---|---|
+| API schema | Zod schema를 request/response source of truth로 사용 |
+| OpenAPI | `zod-to-openapi` 또는 유사 도구로 생성 |
+| DB access | `src/server/repositories/*` 아래 Prisma 격리 |
+| LLM 호출 | `src/server/ai/providers/gemini.ts` adapter로 격리 |
+| safety policy | rule-based precheck + Gemini structured output 후처리 |
+| audit log | 모든 민감 action을 `audit_log` table에 저장 |
+| usage event | 모든 LLM/API billable call을 `usage_event` table에 저장 |
+| cost cap | tenant quota, max tokens, retry cap 구현 |
+| playground | 기본은 sandbox sample response, 실제 Gemini 호출은 명시 실행 |
+
+### 6.3 지금 추가하지 않는 것이 좋은 것
+
+| 제외 항목 | 이유 |
+|---|---|
+| 별도 백엔드 서버 | MVP 속도와 C-TEC-001에 반함 |
+| Supabase Edge Functions | Next.js Route Handlers와 중복 |
+| Vercel Workflow/Queues | 초기에는 DB job table과 cron/manual trigger로 충분 |
+| Realtime dashboard | 비용/복잡도 증가. 초기에는 manual refresh로 충분 |
+| 고급 APM/Observability add-on | 첫 PoC에서는 Vercel 기본 로그 + DB audit log로 충분 |
+| 모델 파인튜닝 | 비용과 데이터 준비 부담이 큼 |
+| 보호자/기관 완성 앱 | PRD Out-of-Scope 유지 필요 |
+
+---
+
+## 7. 최종 권고
+
+현재 `실버케어_SRS_v0.5_단일구조.md`는 MVP 개발 방향으로 적절하다. 시스템 및 비용 효율성 관점에서 보면 아키텍처 자체를 바꿀 필요는 없다. 오히려 지금의 단일구조 선택은 개발 속도, 외부 연동 단순성, 운영 비용 측면에서 합리적이다.
+
+다만 MVP 구현 성공률을 높이려면 아래 5가지를 반드시 조정해야 한다.
+
+| 우선순위 | 조정 | 이유 |
+|---|---|---|
+| 1 | Phase B 기능을 구현 범위에서 명확히 제외 | 개발 범위 폭증 방지 |
+| 2 | p95/SLA/10,000대 동시성 같은 NFR을 MVP baseline과 production target으로 분리 | 구현 불가능한 완료 조건 방지 |
+| 3 | Gemini Flash-Lite 기본 + Flash 승격 전략 명시 | LLM 비용 통제 |
+| 4 | 토큰 상한, tenant quota, Playground quota, spend alert 추가 | 비용 폭주 방지 |
+| 5 | SRS와 별도로 `TASKS/MVP_단일구조_구현작업.md` 작성 | 바이브코딩 실행 가능성 향상 |
+
+MVP의 핵심 가치는 훼손되지 않는다. 오히려 단일 Next.js 구조는 B2B 개발자가 API Key를 발급하고, Playground에서 호출을 실행하고, Gemini 기반 응답과 분석 결과를 확인하며, PoC 리포트로 유료 전환 가능성을 판단하는 핵심 흐름을 가장 빠르게 구현할 수 있는 선택이다.
+
+---
+
+## 8. References
+
+| ID | Source |
+|---|---|
+| REF-COST-01 | Vercel Pricing: https://vercel.com/pricing |
+| REF-COST-02 | Vercel Pro Plan: https://vercel.com/docs/plans/pro-plan |
+| REF-COST-03 | Supabase Billing: https://supabase.com/docs/guides/platform/billing-on-supabase |
+| REF-COST-04 | Supabase Compute Usage: https://supabase.com/docs/guides/platform/manage-your-usage/compute |
+| REF-COST-05 | Google Gemini API Pricing: https://ai.google.dev/gemini-api/docs/pricing |
