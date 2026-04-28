@@ -8,7 +8,7 @@ assignees: ''
 
 ## :dart: Summary
 - 기능명: [NFR-003] Vercel/Supabase 기반 health check와 PoC availability 99.0% 측정 대시보드 구성
-- 목적: SRS `실버케어_SRS_v0.5_단일구조.md`의 `REQ-NF-002` 요구를 구현 가능한 작업 단위로 완성한다.
+- 목적: SRS `실버케어_SRS_v0.5_단일구조.md`의 `REQ-NF-002` 요구를 후속 구현·테스트가 바로 참조할 수 있는 개발 산출물로 완성한다.
 
 ## :link: References (Spec & Context)
 > :bulb: AI Agent & Dev Note: 작업 시작 전 아래 문서를 반드시 먼저 Read/Evaluate 할 것.
@@ -18,35 +18,41 @@ assignees: ''
 - API 명세: [`../../SRS/실버케어_SRS_v0.5_단일구조.md#61-api-endpoint-list`](../../SRS/실버케어_SRS_v0.5_단일구조.md#61-api-endpoint-list)
 
 ## :white_check_mark: Task Breakdown (실행 계획)
-- [ ] `Vercel/Supabase 기반 health check와 PoC availability 99.0% 측정 대시보드 구성`의 측정 지표, threshold, 수집 위치를 정의한다.
-- [ ] 운영 metric, alert, runbook 또는 release gate 연결을 구현한다.
-- [ ] SRS의 정량 기준을 자동 검증 가능한 test/report로 만든다.
-- [ ] PoC baseline과 production readiness target을 분리해 기록한다.
-- [ ] 운영자가 확인할 수 있는 evidence log 또는 dashboard 기준을 작성한다.
+- [ ] Next.js health check endpoint에서 app liveness, database connectivity, critical environment variable 존재 여부를 점검한다.
+- [ ] Vercel deployment 상태와 Supabase connectivity를 기준으로 PoC 월간 availability를 산출하는 dashboard query 또는 report template을 작성한다.
+- [ ] PoC baseline은 월간 측정 가용성 `>= 99.0%`, production target은 `>= 99.9%`로 분리 기록한다.
+- [ ] health check 실패 시 실패 component와 timestamp를 운영 evidence로 남긴다.
+- [ ] availability report가 NFR-002 운영 알림 및 NFR-009 release gate에서 참조 가능하도록 산출물 위치를 문서화한다.
 
 ## :test_tube: Acceptance Criteria (BDD/GWT)
-Scenario 1: 정상 경로 수행
-- Given: 선행 태스크 `CT-001, DB-001`가 완료되어 있음
-- When: `Vercel/Supabase 기반 health check와 PoC availability 99.0% 측정 대시보드 구성` 작업을 수행함
-- Then: SRS 관련 섹션 `REQ-NF-002`의 기대 동작 또는 산출물이 충족되어야 한다.
+Scenario 1: 정상 상태 health check가 성공함
+- Given: application, database, required environment variables가 모두 정상임
+- When: health check endpoint를 호출함
+- Then: 200 상태와 component별 `ok` 결과가 반환되어야 한다.
 
-Scenario 2: 실패 또는 제한 조건 처리
-- Given: 필수 입력, 권한, tenant, consent, quota, schema 중 하나가 유효하지 않음
-- When: `Vercel/Supabase 기반 health check와 PoC availability 99.0% 측정 대시보드 구성` 작업이 실행됨
-- Then: 표준 오류, 접근 제한, 마스킹, audit 또는 backlog 처리 기준에 맞게 실패해야 한다.
+Scenario 2: DB 연결 실패가 component 단위로 드러남
+- Given: Supabase 또는 local SQLite 연결이 실패함
+- When: health check endpoint를 호출함
+- Then: 503 상태와 실패 component명이 반환되고 실패 evidence가 기록되어야 한다.
+
+Scenario 3: PoC availability baseline이 산출됨
+- Given: 월간 health check 결과가 저장되어 있음
+- When: availability report를 생성함
+- Then: PoC measured availability가 99.0% 이상인지 판정하고 production target 99.9%와 분리 표시해야 한다.
 
 ## :gear: Technical & Non-Functional Constraints
-- 보안: tenant 격리, RBAC, audit log, PII masking 기준을 위반하지 않는다.
-- 성능: `/api/v1/chat/reply` 관련 경로는 비LLM p95 800ms, LLM 포함 p95 5초 PoC baseline 계측을 방해하지 않는다.
-- 비용: LLM 호출은 저비용 모델 기본값, token budget, retry cap, quota guardrail을 따른다.
+- 아키텍처: Next.js App Router 단일 풀스택 구조를 유지하고 별도 백엔드 서버를 만들지 않는다.
+- 보안/개인정보: public health check는 민감한 환경 변수 값, DB connection string, tenant 정보를 노출하지 않는다.
+- 성능: health check는 외부 LLM 호출을 수행하지 않으며 DB 연결 확인도 timeout을 둔다.
+- 운영: PoC baseline과 production target은 동일 지표로 측정하되 합격 기준은 분리한다.
 
 ## :checkered_flag: Definition of Done (DoD)
 - [ ] 모든 Acceptance Criteria를 충족하는가?
-- [ ] 단위 테스트(Unit Test) 또는 문서 검증이 추가되었고 통과하는가?
+- [ ] 단위 테스트(Unit Test), 통합 테스트(Integration Test), E2E 테스트 또는 문서 검증 중 해당 작업에 맞는 검증이 추가되었고 통과하는가?
 - [ ] Linter, type check, schema validation 또는 review checklist에서 신규 경고가 없는가?
-- [ ] 관련 API 명세서, 데이터 모델, UI spec 또는 운영 문서가 최신화되었는가?
-- [ ] `TASKS/실버케어_SRS_v0.5_단일구조_TASKS.md`의 의존성 기준과 충돌하지 않는가?
+- [ ] 관련 API 명세서, 데이터 모델, UI spec, 운영 문서 또는 README index가 최신화되었는가?
+- [ ] 대상 작업의 Dependencies/Blocks 관계와 충돌하지 않는가?
 
 ## :construction: Dependencies & Blockers
 - Depends on: CT-001, DB-001
-- Blocks: 후속 태스크는 TASKS 원본의 Dependencies 기준으로 연결
+- Blocks: None

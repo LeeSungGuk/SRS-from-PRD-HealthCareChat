@@ -56,4 +56,4 @@ Scenario 3: Playground와 문서가 같은 계약을 사용함
 
 ## :construction: Dependencies & Blockers
 - Depends on: CT-004
-- Blocks: QRY-002, FE-003, FE-007, NFR-011
+- Blocks: QRY-002

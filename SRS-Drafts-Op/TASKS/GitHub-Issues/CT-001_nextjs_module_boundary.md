@@ -55,4 +55,4 @@ Scenario 3: 향후 분리 가능성이 보장됨
 
 ## :construction: Dependencies & Blockers
 - Depends on: None
-- Blocks: CT-002, CT-006, DB-001, PLAT-002
+- Blocks: CT-002, CT-006, DB-001, PLAT-002, NFR-003, NFR-005

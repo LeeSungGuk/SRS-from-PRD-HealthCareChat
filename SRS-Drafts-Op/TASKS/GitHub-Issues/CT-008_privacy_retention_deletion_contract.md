@@ -57,5 +57,5 @@ Scenario 3: 기본 UI에서 원문 미노출
 
 ## :construction: Dependencies & Blockers
 - Depends on: CT-002
-- Blocks: DB-004, DB-008, SEC-005, CMD-011, NFR-006, TEST-011
+- Blocks: DB-004, DB-008, SEC-005, CMD-011, UX-003
 

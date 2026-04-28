@@ -56,4 +56,4 @@ Scenario 3: PoC report 응답에 PII 필드가 없음
 
 ## :construction: Dependencies & Blockers
 - Depends on: CT-002, CT-003
-- Blocks: CT-005, MOCK-002, CMD-003, CMD-008, CMD-009, QRY-004, FE-004, TEST-001
+- Blocks: CT-005, MOCK-002, CMD-003, CMD-008, CMD-009, UX-002, TEST-001, PMV-001

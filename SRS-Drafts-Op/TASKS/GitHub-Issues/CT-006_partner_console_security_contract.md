@@ -56,5 +56,5 @@ Scenario 3: tenant context 불일치 차단
 
 ## :construction: Dependencies & Blockers
 - Depends on: CT-001
-- Blocks: DB-002, MOCK-001, FE-001, QRY-001, QRY-006, QRY-008
+- Blocks: DB-002, MOCK-001, QRY-001, QRY-006, QRY-008, UX-001, UX-003, FE-001
 

@@ -57,5 +57,5 @@ Scenario 3: LLM timeout 표준 오류 매핑
 
 ## :construction: Dependencies & Blockers
 - Depends on: CT-002, CT-003
-- Blocks: DB-008, MOCK-003, CMD-005, CMD-006, NFR-008, TEST-017
+- Blocks: DB-008, MOCK-003, CMD-005, NFR-007, NFR-010
 

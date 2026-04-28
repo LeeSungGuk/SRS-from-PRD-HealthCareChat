@@ -2,13 +2,13 @@
 name: Feature Task
 about: SRS 기반의 구체적인 개발 태스크 명세
 title: "[Feature] UX-001: Partner Console IA와 navigation flow 상세화: Home, Key, Docs, Playground, Report, Ops, Consent"
-labels: 'feature, design, priority:medium, frontend'
+labels: 'feature, design, priority:medium'
 assignees: ''
 ---
 
 ## :dart: Summary
 - 기능명: [UX-001] Partner Console IA와 navigation flow 상세화: Home, Key, Docs, Playground, Report, Ops, Consent
-- 목적: SRS `실버케어_SRS_v0.5_단일구조.md`의 `6.4, 6.5, REQ-FUNC-048~060` 요구를 구현 가능한 작업 단위로 완성한다.
+- 목적: SRS `실버케어_SRS_v0.5_단일구조.md`의 `6.4, 6.5, REQ-FUNC-048~060` 요구를 후속 구현·테스트가 바로 참조할 수 있는 개발 산출물로 완성한다.
 
 ## :link: References (Spec & Context)
 > :bulb: AI Agent & Dev Note: 작업 시작 전 아래 문서를 반드시 먼저 Read/Evaluate 할 것.
@@ -18,33 +18,40 @@ assignees: ''
 - API 명세: [`../../SRS/실버케어_SRS_v0.5_단일구조.md#61-api-endpoint-list`](../../SRS/실버케어_SRS_v0.5_단일구조.md#61-api-endpoint-list)
 
 ## :white_check_mark: Task Breakdown (실행 계획)
-- [ ] `Partner Console IA와 navigation flow 상세화: Home, Key, Docs, Playground, Report, Ops, Consent`의 사용자, 목적, 화면 범위, 금지 표시 정보를 정의한다.
-- [ ] loading, empty, error, success, permission denied 상태를 설계한다.
-- [ ] B2B Partner Console 범위 안에서만 IA와 navigation을 작성한다.
-- [ ] 보호자용/기관용/어르신용 완성 앱으로 오해될 route나 copy를 제외한다.
-- [ ] FE 태스크가 바로 구현할 수 있도록 component/state checklist를 작성한다.
+- [ ] Partner Console Home에서 `tenant_id`, user role, module list, environment를 첫 화면 정보 구조로 정의한다.
+- [ ] navigation module을 API Key Manager, API Docs, Web API Playground, PoC Report Console, Ops Monitoring, User & Consent Admin으로 제한한다.
+- [ ] B2B-DEV, B2B-PM, 운영자 역할별로 표시 가능한 module과 숨김/disabled/permission denied 상태를 정의한다.
+- [ ] API Key Manager, Docs, Playground, Report, Ops, Consent 화면의 진입/복귀 경로와 주요 action을 flow로 정리한다.
+- [ ] 보호자용 완성 앱, 기관용 완성 앱, 어르신용 앱 UI route가 navigation에 포함되지 않도록 prohibited route 목록을 작성한다.
 
 ## :test_tube: Acceptance Criteria (BDD/GWT)
-Scenario 1: 화면 범위가 명확함
-- Given: SRS 관련 섹션 `6.4, 6.5, REQ-FUNC-048~060`이 주어짐
-- When: `UX-001` UX 산출물을 검토함
-- Then: 대상 사용자, 화면 범위, 표시 필드, 금지 표시 항목이 명확해야 한다.
+Scenario 1: Partner Console IA가 필수 모듈을 포함함
+- Given: UX IA 산출물을 검토함
+- When: navigation module 목록을 확인함
+- Then: Home, Key, Docs, Playground, Report, Ops, Consent 모듈이 포함되어야 한다.
 
-Scenario 2: 구현자가 바로 사용할 수 있음
-- Given: FE 태스크가 `Partner Console IA와 navigation flow 상세화: Home, Key, Docs, Playground, Report, Ops, Consent`를 구현하려고 함
-- When: UX 문서를 참조함
-- Then: loading, empty, error, success, permission state 기준을 확인할 수 있어야 한다.
+Scenario 2: 역할별 module visibility가 정의됨
+- Given: B2B-DEV, B2B-PM, 운영자 역할이 주어짐
+- When: IA 권한 matrix를 확인함
+- Then: 각 역할의 접근 가능 module, 숨김 상태, permission denied 상태가 명시되어야 한다.
+
+Scenario 3: Out-of-Scope UI route가 제외됨
+- Given: 보호자용/기관용/어르신용 완성 앱 UI가 Out-of-Scope임
+- When: navigation과 route 목록을 검토함
+- Then: guardian app, institution dashboard, elder app 목적 route가 포함되지 않아야 한다.
 
 ## :gear: Technical & Non-Functional Constraints
-- UI: Tailwind CSS와 shadcn/ui를 사용하고 보호자/기관/어르신용 완성 앱 UI를 만들지 않는다.
+- UI 범위: Partner Console만 포함하고 보호자/기관/어르신용 완성 앱 UI를 만들지 않는다.
+- 디자인 시스템: Tailwind CSS와 shadcn/ui 기준으로 구현 가능한 component/state checklist를 작성한다.
+- 접근 제어: 모든 protected surface는 authenticated session과 role check를 전제로 설계한다.
 
 ## :checkered_flag: Definition of Done (DoD)
 - [ ] 모든 Acceptance Criteria를 충족하는가?
-- [ ] 단위 테스트(Unit Test) 또는 문서 검증이 추가되었고 통과하는가?
+- [ ] 단위 테스트(Unit Test), 통합 테스트(Integration Test), E2E 테스트 또는 문서 검증 중 해당 작업에 맞는 검증이 추가되었고 통과하는가?
 - [ ] Linter, type check, schema validation 또는 review checklist에서 신규 경고가 없는가?
-- [ ] 관련 API 명세서, 데이터 모델, UI spec 또는 운영 문서가 최신화되었는가?
-- [ ] `TASKS/실버케어_SRS_v0.5_단일구조_TASKS.md`의 의존성 기준과 충돌하지 않는가?
+- [ ] 관련 API 명세서, 데이터 모델, UI spec, 운영 문서 또는 README index가 최신화되었는가?
+- [ ] 대상 작업의 Dependencies/Blocks 관계와 충돌하지 않는가?
 
 ## :construction: Dependencies & Blockers
 - Depends on: CT-006
-- Blocks: 후속 태스크는 TASKS 원본의 Dependencies 기준으로 연결
+- Blocks: UX-002, UX-003, FE-001

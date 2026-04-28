@@ -57,5 +57,5 @@ Scenario 3: Partner Console role과 tenant context가 연결됨
 
 ## :construction: Dependencies & Blockers
 - Depends on: DB-001, CT-006
-- Blocks: DB-003, DB-006, DB-008, MOCK-001, SEC-001, SEC-002, QRY-001
+- Blocks: DB-003, DB-006, DB-008, MOCK-001, PLAT-001, SEC-001, SEC-002, QRY-001
 

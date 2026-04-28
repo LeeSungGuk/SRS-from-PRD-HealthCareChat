@@ -56,5 +56,5 @@ Scenario 3: DB 접근 경계 유지
 
 ## :construction: Dependencies & Blockers
 - Depends on: CT-001
-- Blocks: DB-002, DB-003, DB-009, PLAT-002, NFR-003, NFR-004
+- Blocks: DB-002, DB-003, DB-009, PLAT-002, NFR-003, NFR-004, NFR-005
 

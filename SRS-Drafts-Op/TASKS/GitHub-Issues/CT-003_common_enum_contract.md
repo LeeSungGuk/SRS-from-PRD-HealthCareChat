@@ -56,4 +56,4 @@ Scenario 3: enum 확장 시 하위 호환성 유지
 
 ## :construction: Dependencies & Blockers
 - Depends on: CT-002
-- Blocks: CT-004, CT-007, DB-005, CMD-006, CMD-008, TEST-001
+- Blocks: CT-004, CT-007, DB-005, SEC-004, CMD-006

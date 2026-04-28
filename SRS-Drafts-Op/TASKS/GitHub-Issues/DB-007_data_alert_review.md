@@ -8,7 +8,7 @@ assignees: ''
 
 ## :dart: Summary
 - 기능명: [DB-007] `alert_event` schema와 delivery/review status index 작성
-- 목적: SRS `실버케어_SRS_v0.5_단일구조.md`의 `6.2.1~6.2.5, REQ-FUNC-028, REQ-NF-035` 요구를 구현 가능한 작업 단위로 완성한다.
+- 목적: SRS `실버케어_SRS_v0.5_단일구조.md`의 `6.2.1~6.2.5, REQ-FUNC-028, REQ-NF-035` 요구를 후속 구현·테스트가 바로 참조할 수 있는 개발 산출물로 완성한다.
 
 ## :link: References (Spec & Context)
 > :bulb: AI Agent & Dev Note: 작업 시작 전 아래 문서를 반드시 먼저 Read/Evaluate 할 것.
@@ -18,34 +18,48 @@ assignees: ''
 - API 명세: [`../../SRS/실버케어_SRS_v0.5_단일구조.md#61-api-endpoint-list`](../../SRS/실버케어_SRS_v0.5_단일구조.md#61-api-endpoint-list)
 
 ## :white_check_mark: Task Breakdown (실행 계획)
-- [ ] SRS 데이터 모델과 ``alert_event` schema와 delivery/review status index 작성` 요구에 맞는 Prisma model 초안을 작성한다.
-- [ ] 필수 필드, nullable 여부, primary key, foreign key, unique/index 조건을 정의한다.
-- [ ] tenant-owned 데이터인 경우 `tenant_id` 기반 격리 index를 포함한다.
-- [ ] local SQLite와 Supabase PostgreSQL에서 migration dry-run 가능한 구조로 작성한다.
-- [ ] seed, repository, query/command 태스크가 참조할 데이터 제약을 문서화한다.
+- [ ] Prisma model `alert_event`를 `alert_event_id`, `tenant_id`, `elder_id`, `risk_event_id`, `recipient_type`, `payload`, `delivery_status`, `detected_at`, `sent_at` 필드로 작성한다.
+- [ ] `recipient_type` enum은 `guardian`, `institution`, `partner`만 허용하고 `delivery_status` enum은 `pending`, `sent`, `failed`, `retrying`만 허용한다.
+- [ ] `risk_event` 1:N `alert_event` relation과 tenant/elder FK를 작성한다.
+- [ ] delivery 조회와 재시도 대상을 위해 `risk_event_id`, `(tenant_id, delivery_status, detected_at)` index를 작성한다.
+- [ ] alert payload fixture는 원문 대화 없이 `risk_level`, `risk_reason`, `recommended_action`, `request_id`, `detected_at` 중심으로 작성한다.
 
 ## :test_tube: Acceptance Criteria (BDD/GWT)
-Scenario 1: 스키마가 SRS 필드를 반영함
-- Given: SRS 관련 섹션 `6.2.1~6.2.5, REQ-FUNC-028, REQ-NF-035`이 주어짐
-- When: `DB-007` Prisma schema와 migration을 검토함
-- Then: 필수 필드, key, index, relation이 누락 없이 정의되어야 한다.
-
-Scenario 2: 선행 태스크와 연결됨
+Scenario 1: alert_event migration이 필수 모델과 필드를 생성함
 - Given: 선행 태스크 `DB-005`가 완료됨
-- When: ``alert_event` schema와 delivery/review status index 작성` migration을 적용함
-- Then: 후속 command/query 태스크가 참조할 수 있는 DB 구조가 생성되어야 한다.
+- When: `DB-007` migration을 local SQLite와 Supabase PostgreSQL dry-run 기준으로 적용함
+- Then: `alert_event` 모델과 SRS 6.2.2의 필수 필드, risk_event relation, tenant/delivery index가 생성되어야 한다.
+
+Scenario 2: delivery status enum은 허용값만 저장함
+- Given: alert delivery 상태를 저장함
+- When: `delivery_status` 값을 검증함
+- Then: `pending`, `sent`, `failed`, `retrying` 외 값은 거부되어야 한다.
+
+Scenario 3: 알림 재시도 대상 조회를 지원함
+- Given: `delivery_status=failed` 또는 `retrying`인 alert_event가 존재함
+- When: tenant별 delivery queue query를 실행함
+- Then: `(tenant_id, delivery_status, detected_at)` 기준으로 조회·정렬할 수 있어야 한다.
+
+Scenario 4: alert payload에는 원문과 직접 식별정보가 포함되지 않음
+- Given: alert_event payload를 저장함
+- When: payload JSON을 검사함
+- Then: raw transcript, 상세 주소, 주민등록번호, 원문 API Key가 포함되지 않아야 한다.
 
 ## :gear: Technical & Non-Functional Constraints
 - 아키텍처: Next.js App Router 단일 풀스택 구조를 유지하고 별도 백엔드 서버를 만들지 않는다.
 - 데이터 접근: Prisma Client는 repository/data access 계층에 격리한다.
+- 범위: Phase A에서는 alert_event 추적 schema를 제공하고 외부 Webhook delivery 구현은 Phase B/Post-MVP와 연결한다.
+- Review Loop: alert_event는 `REQ-NF-035` 리뷰 큐와 연결 가능한 `risk_event_id`를 유지해야 한다.
+- 개인정보: payload는 원문 미포함, 권장 액션 중심이어야 한다.
+- 격리: alert_event 조회와 갱신은 항상 `tenant_id` scope를 포함해야 한다.
 
 ## :checkered_flag: Definition of Done (DoD)
 - [ ] 모든 Acceptance Criteria를 충족하는가?
-- [ ] 단위 테스트(Unit Test) 또는 문서 검증이 추가되었고 통과하는가?
+- [ ] 단위 테스트(Unit Test), 통합 테스트(Integration Test), E2E 테스트 또는 문서 검증 중 해당 작업에 맞는 검증이 추가되었고 통과하는가?
 - [ ] Linter, type check, schema validation 또는 review checklist에서 신규 경고가 없는가?
-- [ ] 관련 API 명세서, 데이터 모델, UI spec 또는 운영 문서가 최신화되었는가?
-- [ ] `TASKS/실버케어_SRS_v0.5_단일구조_TASKS.md`의 의존성 기준과 충돌하지 않는가?
+- [ ] 관련 API 명세서, 데이터 모델, UI spec, 운영 문서 또는 README index가 최신화되었는가?
+- [ ] 대상 작업의 Dependencies/Blocks 관계와 충돌하지 않는가?
 
 ## :construction: Dependencies & Blockers
 - Depends on: DB-005
-- Blocks: 후속 태스크는 TASKS 원본의 Dependencies 기준으로 연결
+- Blocks: CMD-013, QRY-007, PMV-002
